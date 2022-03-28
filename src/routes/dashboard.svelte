@@ -140,7 +140,7 @@
 </script>
 
 <svelte:head>
-	<title>MoonMetrics - Dashboard</title>
+	<title></title>
 </svelte:head>
 
 <!-- MAIN GRID -->
