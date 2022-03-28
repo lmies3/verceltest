@@ -63,9 +63,25 @@
 		else tickers = data;
 	}
 
+	let closest;
+	let filter = '';
 	let searchticker;
 	let chartdata = [];
+	let x1 = +Infinity;
+	let x2 = -Infinity;
+	let y1 = +Infinity;
+	let y2 = -Infinity;
+	let filtered = [];
+	let points = [];
+
+	function clickChartDate() {
+		searchdate = closest.x.toString().slice(0, 4) + "-" + closest.x.toString().slice(4, 6) + "-" + closest.x.toString().slice(6);
+		getSummaries();
+	}
+
 	async function getChartData() {
+		chartdata = [];
+		points = [];
 		searchticker = selected;
 
 		let { data, error } = await supabase.rpc('get_ticker_actual', {
@@ -73,8 +89,43 @@
 			startdate,
 			enddate
 		});
+
 		if (error) console.error(error);
-		else chartdata = data;
+		else chartdata.push({ name: searchticker, data: [] });
+
+		data.forEach((item, i) => {
+			let x = parseInt(item.date.replaceAll('-', ''));
+			let y = item.close;
+			chartdata[0].data.push({ x: x, y: y });
+		});
+
+		x1 = +Infinity;
+		x2 = -Infinity;
+		y1 = +Infinity;
+		y2 = -Infinity;
+
+		chartdata.forEach((ticker) => {
+			ticker.data.forEach((d) => {
+				if (d.x < x1) x1 = d.x;
+				if (d.x > x2) x2 = d.x;
+				if (d.y < y1) y1 = d.y;
+				if (d.y > y2) y2 = d.y;
+			});
+		});
+
+		points = chartdata.reduce((points, ticker) => {
+			return points.concat(
+				ticker.data.map((d) => ({
+					x: d.x,
+					y: d.y,
+					ticker
+				}))
+			);
+		}, []);
+
+		// console.log(chartdata)
+
+		console.log(points);
 	}
 
 	onMount(async () => {
@@ -86,36 +137,6 @@
 
 	import * as Pancake from '@sveltejs/pancake';
 	import { countries, years } from '../data';
-
-	let x1 = +Infinity;
-	let x2 = -Infinity;
-	let y1 = +Infinity;
-	let y2 = -Infinity;
-
-	countries.forEach((country) => {
-		country.data.forEach((d) => {
-			if (d.x < x1) x1 = d.x;
-			if (d.x > x2) x2 = d.x;
-			if (d.y < y1) y1 = d.y;
-			if (d.y > y2) y2 = d.y;
-		});
-	});
-
-	let closest;
-	let filter = '';
-
-	$: regex = '' ? new RegExp('', 'i') : null;
-	$: filtered = regex ? countries.filter((country) => regex.test(country.name)) : countries;
-
-	$: points = filtered.reduce((points, country) => {
-		return points.concat(
-			country.data.map((d) => ({
-				x: d.x,
-				y: d.y,
-				country
-			}))
-		);
-	}, []);
 </script>
 
 <svelte:head>
@@ -148,12 +169,11 @@
 		</Column>
 		<Column lg={2}>
 			<Select labelText="Ticker ({tickers.length})" bind:selected>
-				<SelectItem value="" text="Any" />
 				{#each tickers as ticker}
 					<SelectItem value={ticker.ticker} text={ticker.ticker} />
 				{/each}
 			</Select>
-			<Button size="small" kind="ghost">Get Chart</Button>
+			<Button size="small" kind="ghost" on:click={getChartData}>Get Chart</Button>
 		</Column>
 	</Row>
 	<!-- PRICING CHART -->
@@ -162,27 +182,27 @@
 			<!-- <input placeholder="Type to filter" bind:value={filter} /> -->
 			<div class="chart">
 				<Pancake.Chart {x1} {x2} {y1} {y2}>
-					<Pancake.Grid horizontal count={5} let:value>
-						<div class="grid-line horizontal"><span>{value}</span></div>
-					</Pancake.Grid>
-
-					<Pancake.Grid vertical count={5} let:value>
-						<span class="x-label">{value}</span>
-					</Pancake.Grid>
-
 					<Pancake.Svg>
-						{#each filtered as country}
-							<Pancake.SvgLine data={country.data} let:d>
+						{#if points.length > 0}
+							<Pancake.SvgLine data={points} let:d>
 								<path class="data" {d} />
 							</Pancake.SvgLine>
-						{/each}
+						{/if}
 
 						{#if closest}
-							<Pancake.SvgLine data={closest.country.data} let:d>
+							<Pancake.SvgLine data={closest.ticker.data} let:d>
 								<path class="highlight" {d} />
 							</Pancake.SvgLine>
 						{/if}
 					</Pancake.Svg>
+
+					<Pancake.Grid horizontal count={5} let:value>
+						<div class="grid-line horizontal"><span>${value}</span></div>
+					</Pancake.Grid>
+
+					<Pancake.Grid vertical count={5} let:value>
+						<span class="x-label">{value.toString().slice(4, 6) + "-" + value.toString().slice(6)}</span>
+					</Pancake.Grid>
 
 					{#if closest}
 						<Pancake.Point x={closest.x} y={closest.y}>
@@ -191,8 +211,9 @@
 								class="annotation"
 								style="transform: translate(-{100 * ((closest.x - x1) / (x2 - x1))}%,0)"
 							>
-								<strong>{closest.country.name}</strong>
-								<span>{closest.x}: {closest.y} years</span>
+								<strong>{searchticker}</strong>
+								<a href="#" on:click={clickChartDate}>{closest.x.toString().slice(0, 4) + "-" + closest.x.toString().slice(4, 6) + "-" + closest.x.toString().slice(6)}</a>
+								<span on:click={clickChartDate}>${closest.y.toFixed(2)}</span>
 							</div>
 						</Pancake.Point>
 					{/if}
@@ -246,7 +267,7 @@
 				}
 
 				path.data {
-					stroke: rgba(0, 0, 0, 0.2);
+					stroke: rgba(0, 0, 0, 0.3);
 					stroke-linejoin: round;
 					stroke-linecap: round;
 					stroke-width: 1px;
@@ -254,11 +275,10 @@
 				}
 
 				.highlight {
-					stroke: #ff3e00;
+					stroke: #5C62FE;
 					fill: none;
 					stroke-width: 2;
 				}
-
 				.annotation {
 					position: absolute;
 					white-space: nowrap;
@@ -273,7 +293,7 @@
 					position: absolute;
 					width: 10px;
 					height: 10px;
-					background-color: #ff3e00;
+					background-color: #5C62FE;
 					border-radius: 50%;
 					transform: translate(-50%, -50%);
 				}
@@ -301,11 +321,7 @@
 	<Row style="margin-top:14px">
 		<Column>
 			<ButtonSet stacked>
-				<DatePicker
-					datePickerType="single"
-					dateFormat="Y-m-d"
-					bind:value={searchdate}
-				>
+				<DatePicker datePickerType="single" dateFormat="Y-m-d" bind:value={searchdate}>
 					<DatePickerInput labelText="Comment Explore Date" />
 				</DatePicker>
 				<Button size="small" kind="ghost" on:click={getSummaries}>Get Comments</Button>

@@ -15,7 +15,7 @@
 </script>
 
 <svelte:head>
-	<link rel="stylesheet" href="https://unpkg.com/carbon-components-svelte/css/white.css" />
+	<!-- <link rel="stylesheet" href="https://unpkg.com/carbon-components-svelte/css/white.css" /> -->
 	<title>MoonMeter</title>
 </svelte:head>
 
