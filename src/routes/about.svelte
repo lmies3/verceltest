@@ -4,7 +4,7 @@
 </script>
 
 <svelte:head>
-	<title>MoonMetrics - About</title>
+	<title></title>
 </svelte:head>
 
 <Grid narrow>

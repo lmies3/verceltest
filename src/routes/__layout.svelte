@@ -16,16 +16,16 @@
 
 <svelte:head>
 	<!-- <link rel="stylesheet" href="https://unpkg.com/carbon-components-svelte/css/white.css" /> -->
-	<title>MoonMeter</title>
+	<title> </title>
 </svelte:head>
 
-<Header company="MoonMetrics" bind:isSideNavOpen>
+<Header bind:isSideNavOpen>
 	<svelte:fragment slot="skip-to-content">
 		<SkipToContent />
 	</svelte:fragment>
 	<HeaderNav>
-		<HeaderNavItem href="/about" text="About" />
 		<HeaderNavItem href="/dashboard" text="Dashboard" />
+		<HeaderNavItem href="/about" text="About" />
 		<!-- <HeaderNavMenu text="Tools">
 			<HeaderNavItem href="/dash" text="Dashboard" />
 			<HeaderNavItem href="/" text="ArchiveDB" />
