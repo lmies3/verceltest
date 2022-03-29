@@ -1,8 +1,9 @@
 <script>
 	import { onMount } from 'svelte';
 	import { supabase } from '../supabaseclient';
-	import { DatePicker, DatePickerInput } from 'carbon-components-svelte';
 	import {
+		DatePicker,
+		DatePickerInput,
 		DataTable,
 		Toolbar,
 		ToolbarContent,
@@ -12,10 +13,14 @@
 		Tab,
 		TabContent,
 		Select,
-		SelectItem
+		SelectItem, 
+		Button,
+		ButtonSet,
+		Grid,
+		Row,
+		Column
 	} from 'carbon-components-svelte';
-	import { Button, ButtonSet } from 'carbon-components-svelte';
-	import { Grid, Row, Column } from 'carbon-components-svelte';
+	import * as Pancake from '@sveltejs/pancake';
 
 	let searchdate = '2022-01-05';
 	let n = 100000;
@@ -31,9 +36,6 @@
 		else
 			data.forEach((item, i) => {
 				item.id = String(i + 1);
-				// if (item.top_comment_body.length > 50) {
-				// 	item.top_comment_body = item.top_comment_body.substring(0, 50).concat(' ...');
-				// }
 			});
 
 		summaries = data;
@@ -64,15 +66,23 @@
 	}
 
 	let closest;
-	let filter = '';
 	let searchticker;
-	let chartdata = [];
+	let closepoints = [];
+	let openpoints = [];
+	let highpoints = [];
+	let lowpoints = [];
+
+	let close = [];
+	let open = [];
+	let low = [];
+	let high = [];
+
 	let x1 = +Infinity;
 	let x2 = -Infinity;
 	let y1 = +Infinity;
 	let y2 = -Infinity;
-	let filtered = [];
-	let points = [];
+
+
 
 	function clickChartDate() {
 		searchdate = closest.x.toString().slice(0, 4) + "-" + closest.x.toString().slice(4, 6) + "-" + closest.x.toString().slice(6);
@@ -80,8 +90,16 @@
 	}
 
 	async function getChartData() {
-		chartdata = [];
-		points = [];
+
+		closepoints = [];
+		openpoints = [];
+		highpoints = [];
+		lowpoints = [];
+		close = [];
+		open = [];
+		low = [];
+		high = [];
+
 		searchticker = selected;
 
 		let { data, error } = await supabase.rpc('get_ticker_actual', {
@@ -91,12 +109,20 @@
 		});
 
 		if (error) console.error(error);
-		else chartdata.push({ name: searchticker, data: [] });
+		else 
+		closepoints.push({ name: searchticker, data: [] });
+		openpoints.push({ name: searchticker, data: [] });
+		highpoints.push({ name: searchticker, data: [] });
+		lowpoints.push({ name: searchticker, data: [] });
+
 
 		data.forEach((item, i) => {
 			let x = parseInt(item.date.replaceAll('-', ''));
-			let y = item.close;
-			chartdata[0].data.push({ x: x, y: y });
+			closepoints[0].data.push({ x: x, y: item.close });
+			openpoints[0].data.push({ x: x, y: item.open });
+			highpoints[0].data.push({ x: x, y: item.high });
+			lowpoints[0].data.push({ x: x, y: item.low });
+
 		});
 
 		x1 = +Infinity;
@@ -104,7 +130,7 @@
 		y1 = +Infinity;
 		y2 = -Infinity;
 
-		chartdata.forEach((ticker) => {
+		closepoints.forEach((ticker) => {
 			ticker.data.forEach((d) => {
 				if (d.x < x1) x1 = d.x;
 				if (d.x > x2) x2 = d.x;
@@ -113,8 +139,35 @@
 			});
 		});
 
-		points = chartdata.reduce((points, ticker) => {
-			return points.concat(
+		openpoints.forEach((ticker) => {
+			ticker.data.forEach((d) => {
+				if (d.x < x1) x1 = d.x;
+				if (d.x > x2) x2 = d.x;
+				if (d.y < y1) y1 = d.y;
+				if (d.y > y2) y2 = d.y;
+			});
+		});
+
+		highpoints.forEach((ticker) => {
+			ticker.data.forEach((d) => {
+				if (d.x < x1) x1 = d.x;
+				if (d.x > x2) x2 = d.x;
+				if (d.y < y1) y1 = d.y;
+				if (d.y > y2) y2 = d.y;
+			});
+		});
+
+		lowpoints.forEach((ticker) => {
+			ticker.data.forEach((d) => {
+				if (d.x < x1) x1 = d.x;
+				if (d.x > x2) x2 = d.x;
+				if (d.y < y1) y1 = d.y;
+				if (d.y > y2) y2 = d.y;
+			});
+		});
+
+		close = closepoints.reduce((close, ticker) => {
+			return close.concat(
 				ticker.data.map((d) => ({
 					x: d.x,
 					y: d.y,
@@ -123,9 +176,36 @@
 			);
 		}, []);
 
-		// console.log(chartdata)
+		open = openpoints.reduce((open, ticker) => {
+			return open.concat(
+				ticker.data.map((d) => ({
+					x: d.x,
+					y: d.y,
+					ticker
+				}))
+			);
+		}, []);
 
-		console.log(points);
+		low = lowpoints.reduce((low, ticker) => {
+			return low.concat(
+				ticker.data.map((d) => ({
+					x: d.x,
+					y: d.y,
+					ticker
+				}))
+			);
+		}, []);
+
+		high = highpoints.reduce((high, ticker) => {
+			return high.concat(
+				ticker.data.map((d) => ({
+					x: d.x,
+					y: d.y,
+					ticker
+				}))
+			);
+		}, []);
+
 	}
 
 	onMount(async () => {
@@ -135,8 +215,6 @@
 		getChartData();
 	});
 
-	import * as Pancake from '@sveltejs/pancake';
-	import { countries, years } from '../data';
 </script>
 
 <svelte:head>
@@ -148,7 +226,7 @@
 	<!-- PRICING HEADER -->
 	<Row>
 		<Column>
-			<h2>Pricing</h2>
+			<h2>Charts</h2>
 			<hr />
 		</Column>
 	</Row>
@@ -173,55 +251,175 @@
 					<SelectItem value={ticker.ticker} text={ticker.ticker} />
 				{/each}
 			</Select>
-			<Button size="small" kind="ghost" on:click={getChartData}>Get Chart</Button>
+			<Button size="small" kind="ghost" on:click={getChartData}>Get Charts</Button>
 		</Column>
 	</Row>
 	<!-- PRICING CHART -->
-	<Row>
+	<Row style="margin-top:14px">
 		<Column>
+			<Tabs>
+				<Tab label="Close" />
+				<Tab label="Open" />
+				<Tab label="High" />
+				<Tab label="Low" />
+				<svelte:fragment slot="content">
+					<TabContent>
+						<div class="chart">
+							<Pancake.Chart {x1} {x2} {y1} {y2}>
+								<Pancake.Svg>
+									{#if close.length > 0}
+										<Pancake.SvgLine data={close} let:d>
+											<path class="data" {d} />
+										</Pancake.SvgLine>
+									{/if}
+									{#if closest}
+										<Pancake.SvgLine data={closest.ticker.data} let:d>
+											<path class="highlight" {d} />
+										</Pancake.SvgLine>
+									{/if}
+								</Pancake.Svg>
+								<Pancake.Grid horizontal count={5} let:value>
+									<div class="grid-line horizontal"><span>${value}</span></div>
+								</Pancake.Grid>
+								<Pancake.Grid vertical count={5} let:value>
+									<span class="x-label">{value.toString().slice(4, 6) + "-" + value.toString().slice(6)}</span>
+								</Pancake.Grid>
+								{#if closest}
+									<Pancake.Point x={closest.x} y={closest.y}>
+										<span class="annotation-point" />
+										<div
+											class="annotation"
+											style="transform: translate(-{100 * ((closest.x - x1) / (x2 - x1))}%,0)"
+										>
+											<strong>{searchticker}</strong>
+											<a href="" on:click={clickChartDate}>{closest.x.toString().slice(0, 4) + "-" + closest.x.toString().slice(4, 6) + "-" + closest.x.toString().slice(6)}</a>
+											<span on:click={clickChartDate}>${closest.y.toFixed(2)}</span>
+										</div>
+									</Pancake.Point>
+								{/if}
+								<Pancake.Quadtree data={close} bind:closest />
+							</Pancake.Chart>
+						</div>
+					</TabContent>
+					<TabContent>
+						<div class="chart">
+							<Pancake.Chart {x1} {x2} {y1} {y2}>
+								<Pancake.Svg>
+									{#if open.length > 0}
+										<Pancake.SvgLine data={open} let:d>
+											<path class="data" {d} />
+										</Pancake.SvgLine>
+									{/if}
+									{#if closest}
+										<Pancake.SvgLine data={closest.ticker.data} let:d>
+											<path class="highlight" {d} />
+										</Pancake.SvgLine>
+									{/if}
+								</Pancake.Svg>
+								<Pancake.Grid horizontal count={5} let:value>
+									<div class="grid-line horizontal"><span>${value}</span></div>
+								</Pancake.Grid>
+								<Pancake.Grid vertical count={5} let:value>
+									<span class="x-label">{value.toString().slice(4, 6) + "-" + value.toString().slice(6)}</span>
+								</Pancake.Grid>
+								{#if closest}
+									<Pancake.Point x={closest.x} y={closest.y}>
+										<span class="annotation-point" />
+										<div
+											class="annotation"
+											style="transform: translate(-{100 * ((closest.x - x1) / (x2 - x1))}%,0)"
+										>
+											<strong>{searchticker}</strong>
+											<a href="" on:click={clickChartDate}>{closest.x.toString().slice(0, 4) + "-" + closest.x.toString().slice(4, 6) + "-" + closest.x.toString().slice(6)}</a>
+											<span on:click={clickChartDate}>${closest.y.toFixed(2)}</span>
+										</div>
+									</Pancake.Point>
+								{/if}
+								<Pancake.Quadtree data={open} bind:closest />
+							</Pancake.Chart>
+						</div>
+					</TabContent>
+					<TabContent>
+						<div class="chart">
+							<Pancake.Chart {x1} {x2} {y1} {y2}>
+								<Pancake.Svg>
+									{#if high.length > 0}
+										<Pancake.SvgLine data={high} let:d>
+											<path class="data" {d} />
+										</Pancake.SvgLine>
+									{/if}
+									{#if closest}
+										<Pancake.SvgLine data={closest.ticker.data} let:d>
+											<path class="highlight" {d} />
+										</Pancake.SvgLine>
+									{/if}
+								</Pancake.Svg>
+								<Pancake.Grid horizontal count={5} let:value>
+									<div class="grid-line horizontal"><span>${value}</span></div>
+								</Pancake.Grid>
+								<Pancake.Grid vertical count={5} let:value>
+									<span class="x-label">{value.toString().slice(4, 6) + "-" + value.toString().slice(6)}</span>
+								</Pancake.Grid>
+								{#if closest}
+									<Pancake.Point x={closest.x} y={closest.y}>
+										<span class="annotation-point" />
+										<div
+											class="annotation"
+											style="transform: translate(-{100 * ((closest.x - x1) / (x2 - x1))}%,0)"
+										>
+											<strong>{searchticker}</strong>
+											<a href="" on:click={clickChartDate}>{closest.x.toString().slice(0, 4) + "-" + closest.x.toString().slice(4, 6) + "-" + closest.x.toString().slice(6)}</a>
+											<span on:click={clickChartDate}>${closest.y.toFixed(2)}</span>
+										</div>
+									</Pancake.Point>
+								{/if}
+								<Pancake.Quadtree data={high} bind:closest />
+							</Pancake.Chart>
+						</div>
+					</TabContent>
+					<TabContent>
+						<div class="chart">
+							<Pancake.Chart {x1} {x2} {y1} {y2}>
+								<Pancake.Svg>
+									{#if low.length > 0}
+										<Pancake.SvgLine data={low} let:d>
+											<path class="data" {d} />
+										</Pancake.SvgLine>
+									{/if}
+									{#if closest}
+										<Pancake.SvgLine data={closest.ticker.data} let:d>
+											<path class="highlight" {d} />
+										</Pancake.SvgLine>
+									{/if}
+								</Pancake.Svg>
+								<Pancake.Grid horizontal count={5} let:value>
+									<div class="grid-line horizontal"><span>${value}</span></div>
+								</Pancake.Grid>
+								<Pancake.Grid vertical count={5} let:value>
+									<span class="x-label">{value.toString().slice(4, 6) + "-" + value.toString().slice(6)}</span>
+								</Pancake.Grid>
+								{#if closest}
+									<Pancake.Point x={closest.x} y={closest.y}>
+										<span class="annotation-point" />
+										<div
+											class="annotation"
+											style="transform: translate(-{100 * ((closest.x - x1) / (x2 - x1))}%,0)"
+										>
+											<strong>{searchticker}</strong>
+											<a href="" on:click={clickChartDate}>{closest.x.toString().slice(0, 4) + "-" + closest.x.toString().slice(4, 6) + "-" + closest.x.toString().slice(6)}</a>
+											<span on:click={clickChartDate}>${closest.y.toFixed(2)}</span>
+										</div>
+									</Pancake.Point>
+								{/if}
+								<Pancake.Quadtree data={low} bind:closest />
+							</Pancake.Chart>
+						</div>
+					</TabContent>
+
+				</svelte:fragment>
+				</Tabs>
 			<!-- <input placeholder="Type to filter" bind:value={filter} /> -->
-			<div class="chart">
-				<Pancake.Chart {x1} {x2} {y1} {y2}>
-					<Pancake.Svg>
-						{#if points.length > 0}
-							<Pancake.SvgLine data={points} let:d>
-								<path class="data" {d} />
-							</Pancake.SvgLine>
-						{/if}
-
-						{#if closest}
-							<Pancake.SvgLine data={closest.ticker.data} let:d>
-								<path class="highlight" {d} />
-							</Pancake.SvgLine>
-						{/if}
-					</Pancake.Svg>
-
-					<Pancake.Grid horizontal count={5} let:value>
-						<div class="grid-line horizontal"><span>${value}</span></div>
-					</Pancake.Grid>
-
-					<Pancake.Grid vertical count={5} let:value>
-						<span class="x-label">{value.toString().slice(4, 6) + "-" + value.toString().slice(6)}</span>
-					</Pancake.Grid>
-
-					{#if closest}
-						<Pancake.Point x={closest.x} y={closest.y}>
-							<span class="annotation-point" />
-							<div
-								class="annotation"
-								style="transform: translate(-{100 * ((closest.x - x1) / (x2 - x1))}%,0)"
-							>
-								<strong>{searchticker}</strong>
-								<a href="#" on:click={clickChartDate}>{closest.x.toString().slice(0, 4) + "-" + closest.x.toString().slice(4, 6) + "-" + closest.x.toString().slice(6)}</a>
-								<span on:click={clickChartDate}>${closest.y.toFixed(2)}</span>
-							</div>
-						</Pancake.Point>
-					{/if}
-
-					<Pancake.Quadtree data={points} bind:closest />
-				</Pancake.Chart>
-			</div>
-
+			
 			<style>
 				.chart {
 					height: 400px;

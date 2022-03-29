@@ -19,13 +19,13 @@
 	<title> </title>
 </svelte:head>
 
-<Header bind:isSideNavOpen>
+<Header company="WSB 'What are your moves tomorrow?'" platformName="" bind:isSideNavOpen>
 	<svelte:fragment slot="skip-to-content">
 		<SkipToContent />
 	</svelte:fragment>
 	<HeaderNav>
 		<HeaderNavItem href="/dashboard" text="Dashboard" />
-		<HeaderNavItem href="/about" text="About" />
+		<HeaderNavItem href="/" text="About" />
 		<!-- <HeaderNavMenu text="Tools">
 			<HeaderNavItem href="/dash" text="Dashboard" />
 			<HeaderNavItem href="/" text="ArchiveDB" />
